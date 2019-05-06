@@ -10,10 +10,15 @@
 \usepackage{hyperref}
 \usepackage{pdfpages}
 \usepackage{listings}
+\usepackage{longtable}
 
 % General
 \usepackage{color}  
 
+ 
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
 %-------------------------------------------------------------------------------
 % User-commands
 \newcommand{\todo}[1]{{\color{red}{#1}}}
@@ -24,27 +29,725 @@
 \departamento[a]{Departamento de Informática e Estatística}
 \curso[o]{Ciências da Computação}
 \documento[o]{Trabalho de conclusão de curso} % [o] para dissertação [a] para tese
-\subtitulo{Trabalho Individual 1}
+\subtitulo{Trabalho Individual 2}
 \titulo{Segurança em Computação}
 %\subtitulo{Subtítulo (se houver)} % Opcional
 \autor{Leonardo Schlüter Leite}
 \grau{Bacharel em Ciências da Computação}
 \local{Florianópolis} % Opcional (Florianópolis é o padrão)
-\data{25}{março}{2019}
+\data{16}{abril}{2019}
 
 
 \begin{document}
     \folhaderosto
     \sumario
+    
+    \chapter{Geradores de números pseudoaleatórios}
+    Neste capítulo serão apresentados os dois algoritmos implementados para a geração de números pseudoaleatórios. Ambos os algoritmos selecionados produzem números múltiplos de 32, portanto números com 56 bits, 168, 224 e etc. não serão gerados.
+    
+    \section{Gerador Congruente Linear}
+    Abaixo temos o código utilizado para gerar números aleatório usando LGC, baseando-se no algoritmo mostrado em https://aaronschlegel.me/linear-congruential-generator-r.html 
+     \begin{lstlisting}[language=Java,breaklines=true, tabsize=2,basicstyle =\fontsize{9}{11}]
+public class LinearCongruential {
 
-    algoritmos escolhidos para implementar:
-    1- Mersenne Twister
+    long modulus;
+    long a; // multiplicador
+    long c; // incremento
+    long seed;
+
+    // inicializacao do gerador
+    // Para que o periodo da sequencia seja do tamanho 
+    // do modulo eh necessario que o deslocamento ou
+    // seja relativamente primo com o modulo
+    // que a-1 seja divisivel por todos 
+    // os fatores primos de m
+    public LinearCongruential(long modulus, long a, 
+    	long c, long seed){
+    	
+        this.modulus = modulus;
+        this.a = a;
+        this.c = c; // se c for = 0, caimos em outro 
+        			//tipo de gerador.
+        this.seed = seed;
+    }
+
+    public long generate(){
+        this.seed = (a*this.seed +c) % modulus;
+        // multiplica a semente, soma com constante 
+        // e faz o modulo.
+        // a seed eh atualizada e entao retornada.
+        return seed; 
+    }
+}
+\end{lstlisting}
+	Tendo este código implementado, podemos percerber que os números gerados são de 64bit. Para gerar números que sejam múltiplos de 64, como 32, 128, 1024 e 4096 foi construído um loop que a cada iteração cria uma nova semente, inicializa um objeto do tipo LinearConruential e pede o próximo número. Então esses números são concatenados até termos a quantidade de bits necessária. Na tabela~\ref{tab:numerosLGC} temos exemplos de números de vários tamanhos gerados utilizando o algoritmo LGC.
+	
+\begin{longtable}{|p{3cm} | p{9cm} |}
+ \caption{Exemplo de números gerados com LGC.}\label{tab:numerosLGC}\\
+\hline
+Tamanho em bits & Número Gerado  \\
+\hline
+31 & 1982274587 \\
+\hline
+63 & 7647551033894467049 \\
+\hline
+511 & 4487339197896165103959118044218800277 
+4439806092253007016447113452822890646061608 
+0851038371269032048288673820170285582936925 
+9415897498595071394759598429613 \\
+\hline
+1023 & 812237707737715233392748949412645909792158
+4156200002770059826252922922678883260357074016455
+7416308904108916625008336311014371426803547486977
+8315806651580409230750320778800842824037265645671
+1313615119209623855698128160229770033050315635554
+3835736811091460828166202201038954391496688421521
+509392464365308518149 \\
+\hline
+2047 & 133875388389516398504794679886249058273696
+3550505146432481406994129611692239266191110381182
+9788109415713816627857207083012074316855387160589
+8706811036192399219716020261922133532670520158054
+4359048522073952207009051872071128440534844287149
+0748686386866224474579717907067239357655113674851
+2839884696560513677369673605173781255925654694451
+6383060636108090887768503211080391927733196451434
+3834228396222280458809625433748472226619983851991
+3862510479680144492499378614729667166761507437305
+4571115905226657988969455696562940111326545485325
+538695556123492714498404690773376471228491925002
+6987657231838100982214283648766262412\\
+\hline
+\end{longtable}
+
+
+	 
+    \section{Multiply-with-Carry}
+        Abaixo temos o código utilizado para gerar números aleatório usando MWC, baseando-se no algoritmo mostrado em https://www.javamex.com/tutorials/random\_numbers/multiply\_with\_carry.shtml
+    \begin{lstlisting}[language=Java,breaklines=true, tabsize=2,basicstyle =\fontsize{9}{11}]
+public class MultiplyWIthCarry {
+
+    final long a = 0xffffda61L;
+    long seed = System.nanoTime() & 0xffffffffL;
+
+    //Parecido com o LGC, porem passa em
+    //alguns testes estatisticos que o LGC falha,
+    //se forem escolhidos bons parametros.
+    public int nextInt() {
+        seed = (a * (seed & 0xffffffffL)) + (seed >>> 32); 
+        // primeiro zera os 32 bits
+        // mais significativo da semente,
+        // depois multiplica e soma com a semenete
+        // dividida por 2^32 com shift right.
+        return Math.abs((int) seed);
+    }
+
+}
+    \end{lstlisting}
+    Tendo este código implementado, podemos percerber que os números gerados são de 32bit. Para gerar números que sejam múltiplos de 32, como 64, 128, 1024 e 4096 foi construído um loop que a cada iteração cria um novo objeto do tipo MultiplyWithCarry e pede o próximo número. Então esses números são concatenados até termos a quantidade de bits necessária. Abaixo temos alguns exemplos de números gerados com este algoritmo: 
+ 
+\begin{longtable}{|p{3cm} | p{9cm} |}
+ \caption{Exemplo de números gerados com MWC.}\label{tab:numerosMWC}\\
+\hline
+Tamanho em bits & Número Gerado  \\
+\hline
+31 & 1912360281 \\  
+\hline
+31 & 1697062396 \\
+\hline
+63 & 8081633200613964543 \\
+\hline
+63 & 7733642056664092968 \\
+\hline
+127 & 139146135588267251463073470093232054794 \\
+\hline
+127 & 142489858770018732778875980919996352105 \\  
+\hline
+255 & 34831164690570254176761523765974482045317
+576655770892545132398369993994889285 \\
+\hline
+511 & 
+64512565120576575476488228655115924471895509674723
+38785114752729831791781378202144567519263387958490
+37774611597961106016979593759252393
+5187131540682925669 \\
+\hline
+1023 & 8432342347830620320615947194601875109659591659497
+0552644938966090273130665389409798169320277031109
+4597090074742525306093839703240434063817374330155
+1160496229362402253946265710259922395533222700680
+9935654348850142002119831311038224543451291024879
+7317571809893797631884085882875442465747431544498
+77490551364782 \\
+\hline
+2045 & 234770526248041897243529882238857384426575675682
+3290223946978657547339232923569428804878073904038
+5111600344987236414314259856384286244328268282262
+3273164679719961176400321538832913884277954840130
+6320760280984521312547086369237279770286895228148
+1607574296478312355993381594201964491826303683628
+4858913062917608434283318898496483642051374272849
+6157107010057323859648205622533858612502392295284
+7784286609915676863122899983873354655093704828457
+5111086003311425874880159565583762686068197904802
+2692115046027914387712221046447889928336556397368
+7831561354207987182264589167098841737964046076219
+8174542639509214971342685881 \\  
+\hline
+\end{longtable}
+
+\section{Comparação}
+	Segundo a ~\ref{tab:comparacaoMWCLGC}, podemos concluir que em média, o LGC executa em menos tempo utilizando as implementações apresentadas. Porém, é sabido que as implementações apresentadas podem não ser as mais eficientes, visto que a linguagem Java não é exatamente propícia para operações bitwise.
+
+\begin{longtable}{| p{2cm} | p{2cm}| p{2cm}| p{4cm} |}
+ \caption{Exemplo de números gerados com MWC.}\label{tab:comparacaoMWCLGC}\\
+\hline
+Tamanho em bits & Elapsed Time LGC & ElapsedTime MWC & LGC - MWC \\
+\hline
+32 & 2.41671E-4s & 3.77667E-4s & -1.3599598605651408E-4\\  
+\hline
+64 & 5.482E-6s & 5.161E-6s & 3.209997885278426E-7\\  
+\hline
+128 & 7.859E-6s & 7.045E-6s & 8.140000318235252E-7\\  
+\hline
+256 & 1.2502E-5s & 2.5166E-5s & -1.2664000678341836E-5\\  
+\hline
+512 & 2.0995E-5s & 2.1003E-5s & -7.999915396794677E-9\\  
+\hline
+1024 & 5.0945E-5s & 3.1665E-5s & 1.9279999833088368E-5\\  
+\hline
+2048 & 1.56663E-4s & 2.00992E-4s & -4.4329004595056176E-5\\  
+\hline
+4096 & 9.995E-5s & 1.27286E-4s & -2.733599831117317E-5\\  
+\hline
+8192 & 2.52915E-4s & 8.7043E-5s & 1.6587198479101062E-4\\  
+\hline
+16384 & 1.79728E-4s & 1.011E-4s & 7.86279997555539E-5\\  
+\hline
+\end{longtable}
+
+\chapter{Números Primos}
+	Neste capítulo será mostrado os dois métodos utilizados para verificar a primalidade de um número. Primeiro apresentaremos quatro números inteiros para cada potência de dois, começando com o expoente igual 5 e terminando em 12, gerados pelos algoritmos apresentados anteriormente. Depois será mostrado os códigos dos dois métodos verificadores, de forma comentada. Por último será apresentado uma comparação baseada em complexidade do algoritmo e nos tempos apresentados pela implementações propostas.
+		
+
+Dado esses números, agora será apresentados os métodos que serão utilizados para verificar se esses números são primos
+
+\section{Miller-Rabin}
+	Este método contém alguns contribuidores, sendo os principais Gary L. Miller e Michael O. Rabin. O primeiro conseguiu desenvolver um teste determinístico e o segundo propôs uma modificação para trazer probabilidade para dentro do verificador. Segue um exemplo de implementação: 
+	 \begin{lstlisting}[language=Java,breaklines=true, tabsize=2,basicstyle =\fontsize{9}{11}]
+public class MillerRabin {
+
+    private int rounds;
+
+    public MillerRabin(int numberOfRounds){
+        this.rounds = numberOfRounds;
+    }
+
+    public boolean test(BigInteger number){
+        // verifica se o numero e par.
+        if (number.divideAndRemainder(BigInteger.TWO)[1]
+                .equals(BigInteger.ZERO)) {
+            return false;
+        }
+        //incrementador para a decomposicao do numero
+        int powerOf2 = 0;
+        // como e impar, diminuimos 1 para decompor
+        BigInteger odd = number.subtract(BigInteger.ONE);
+
+        //loop da decomposicao em potencia de 2
+        //enquanto o mod por 2 for igual a 0
+        while (odd.mod(BigInteger.TWO).equals(0)) {
+            // atualiza o incrementador
+            powerOf2++;
+            //atualiza o valor para que o loop
+            // tenha um fim ...
+            odd = odd.divide(BigInteger.TWO);
+        }
+
+
+
+        Random random = new Random();
+        for(int i = 0; i< this.rounds; i ++){
+            BigInteger randomBase = selectRandomBase(number, random);
+            // depois de ter selecionado a base, eleva ela
+            // a potencia impar que sobrou da decomposicao
+            // modulo o numero que se quer testar
+            // este sera o divisor
+            BigInteger divisor = randomBase.modPow(odd, number);
+
+            //se divisor nao for igual a um e nao for igual ao numero - 2
+            if( !divisor.equals(BigInteger.ONE) &&
+                    !divisor.equals(number.subtract(BigInteger.TWO))){
+               if(!this.teste(divisor, number, powerOf2)){
+                   return false;
+               }
+            }
+        }
+        // se depois de todos os rounds
+        // o metodo nao tiver retornado
+        //o numero e um possivel primo.
+        //se o numero nao for primo
+        // o algoritmo tem 4^-(numero de rodadas) probabilidade
+        // de dizer que o numero eh primo.
+        return true;
+    }
+
+    private BigInteger selectRandomBase(BigInteger number, Random random){
+        BigInteger randomBase;
+        // seleciona uma base entre 2 e (n-2)
+        do {
+            randomBase = new BigInteger(number.subtract(BigInteger.TWO).bitLength(), random);
+        } while (randomBase.compareTo(BigInteger.TWO) < 0 || randomBase.compareTo(number.subtract(BigInteger.TWO)) > 0);
+        return randomBase;
+    }
+
+    private boolean teste(BigInteger divisor, BigInteger number,  int powerOf2){
+        // verifica se o numero eh divisivel por
+        // alguma potencia do divisior antes encontrado
+        for(int j = 0; j < powerOf2; j++){
+            divisor = divisor.modPow(BigInteger.TWO, number);
+            // se for, retorna falso.
+            if(!divisor.equals(number.subtract(BigInteger.ONE))){
+                return false;
+            }
+        }
+        return true;
+    }
+}
+
+	 \end{lstlisting}
+	
+\section{Solovay–Strassen} 
+	 Agora será apresentado uma implentação do algoritmo desenvolvido por  Robert M. Solovay e Volker Strassen. Apesar de um teste já superado por outros, como pelo próprio Miller-Rabin, este algoritmo foi escolhido pela importância ao demonstrar a possibilidade de por o algoritmo RSA em prática. Assim como o Miller-Rabin também é um teste probabílistico, sendo possível gerar a respsota errada. 
+	 
+	 \begin{lstlisting}[language=Java,breaklines=true, tabsize=2,basicstyle =\fontsize{9}{11}]
+public class SolovayStrassen {
+    private int rounds;
+    public SolovayStrassen(int rounds){
+        this.rounds = rounds;
+    }
+
+    public boolean test(BigInteger number){
+        // verifica se o numero e par.
+        if (number.divideAndRemainder(BigInteger.TWO)[1].equals(BigInteger.ZERO)) {
+            return false;
+        }
+        Random random = new Random();
+
+        for(int i =0; i < rounds; i++){
+            BigInteger randomDividend = selectRandomDividend(number, random);
+            // verifica o quociente da divisao
+            BigInteger quotient = randomDividend.divide(number);
+
+            //cria a potencia baseada em (numero - 1 ) /2 
+            // que sera utilizada para testar se
+            // o numero eh composto
+            BigInteger power = number.subtract(BigInteger.ONE).divide(BigInteger.TWO);
+            
+            // se o quociente for igual a 0,
+            // ou se o quociente mod  numero sendo testado
+            // for igual ao dividendo elevado a potencia achada
+            // anteriormente, entao o numero e composto 
+            if(quotient.equals(BigInteger.ZERO) || quotient.mod(number).equals(randomDividend.modPow(power, number))){
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private BigInteger selectRandomDividend(BigInteger number, Random random){
+        // seleciona um dividendo aleatorio entre 2 e n - 1.
+        BigInteger randomDividend;
+        do {
+            randomDividend = new BigInteger(number.subtract(BigInteger.ONE).bitLength(), random);
+        } while (randomDividend.compareTo(BigInteger.TWO) < 0 || randomDividend.compareTo(number.subtract(BigInteger.ONE)) > 0);
+        return randomDividend;
+    }
     
-    2- Multiply With Carry    
-    https://www.javamex.com/tutorials/random_numbers/multiply_with_carry.shtml
-    
-    3-BlumBlumShub
-    https://github.com/javabeanz/javarng/blob/master/com/modp/random/BlumBlumShub.java
-    
-    
+    // nao podemos esquecer tambem que a probabilidade de erro 2^-(numero de rodadas)
+}
+\end{lstlisting}
+
+\section{Comparação}
+	Será mostrado tabelas com diferentes números de rodada para o algoritmo de Miller-Rabin, enquanto o do Solovay–Strassen deixaremos fixado o número de rodadas em 2000000000. Começaremos com 1000, depois 2000 e por último 20000. A primeira comparação antes de partirmos para dados reais é da complexidade. O Miller-Rabin quando mal implementado tem O(NumeroRodadas*log\^3(numeroSendoTestado)), mas podemos reduzir isso para O(NumeroRodadas*log\^2(numeroSendoTestado)). Enquanto o Solovay–Strassen tem complexidade de  O(NumeroRodadas*log\^3(numeroSendoTestado)). Desta forma podemos esperar que os tempos de execução, considerando que o Miller-Rabin não tenha sido acelerado ao máximo, serão iguais. Todos os tempos aqui listados são em segundos.
+	
+\begin{longtable}{|c|p{1cm}|p{1cm}|p{2cm}|p{2cm}|p{2cm}|}
+ \caption{Tabela dos resultados e tempos dos algoritmos com 1000 rodadas. (MR = Miller-Rabin, SS = Solovay–Strassen, ET = Elapsed Time) }\label{tab:comparacao}\\
+ \hline
+ Índice & MR & SS & ET MR & ET SS & Diferença \\ \hline
+ 1 & Sim & Não & 0,02721946 & 0,00082451 & 0,02639494\\ \hline 
+2 & Sim & Não & 0,00395581 & 0,00003180 & 0,00392401\\ \hline 
+3 & Sim & Não & 0,00421093 & 0,00001616 & 0,00419477\\ \hline 
+4 & Sim & Não & 0,00606996 & 0,00002150 & 0,00604846\\ \hline 
+5 & Sim & Não & 0,01363707 & 0,00002138 & 0,01361570\\ \hline 
+6 & Sim & Não & 0,00691495 & 0,00003078 & 0,00688417\\ \hline 
+7 & Sim & Não & 0,00607304 & 0,00003843 & 0,00603461\\ \hline 
+8 & Sim & Não & 0,00514969 & 0,00001684 & 0,00513284\\ \hline 
+9 & Sim & Não & 0,01137630 & 0,00002545 & 0,01135086\\ \hline 
+10 & Sim & Não & 0,01114735 & 0,00001635 & 0,01113100\\ \hline 
+11 & Sim & Não & 0,01215473 & 0,00003235 & 0,01212238\\ \hline 
+12 & Sim & Não & 0,01581122 & 0,00003540 & 0,01577581\\ \hline 
+13 & Sim & Não & 0,03879687 & 0,00002254 & 0,03877433\\ \hline 
+14 & Sim & Não & 0,05173407 & 0,00002865 & 0,05170542\\ \hline 
+15 & Sim & Não & 0,04396776 & 0,00001802 & 0,04394974\\ \hline 
+16 & Sim & Não & 0,02912524 & 0,00001844 & 0,02910680\\ \hline 
+17 & Sim & Não & 0,11564312 & 0,00002016 & 0,11562296\\ \hline 
+18 & Sim & Não & 0,10420472 & 0,00001519 & 0,10418953\\ \hline 
+19 & Sim & Não & 0,11902215 & 0,00002068 & 0,11900147\\ \hline 
+20 & Sim & Não & 0,13295890 & 0,00003048 & 0,13292842\\ \hline 
+21 & Sim & Não & 0,54929798 & 0,00001912 & 0,54927887\\ \hline 
+22 & Sim & Não & 0,49270492 & 0,00001969 & 0,49268523\\ \hline 
+23 & Sim & Não & 1,05076475 & 0,00001630 & 1,05074846\\ \hline 
+24 & Sim & Não & 1,06246156 & 0,00003153 & 1,06243002\\ \hline 
+25 & Sim & Não & 4,86770054 & 0,00002803 & 4,86767251\\ \hline 
+26 & Sim & Não & 4,78670085 & 0,00003337 & 4,78666748\\ \hline 
+27 & Sim & Não & 6,13922313 & 0,00002661 & 6,13919652\\ \hline 
+28 & Sim & Não & 5,04230766 & 0,00002859 & 5,04227907\\ \hline 
+29 & Sim & Não & 39,54266595 & 0,00003313 & 39,54263282\\ \hline 
+30 & Sim & Não & 38,74941144 & 0,00009253 & 38,74931891\\ \hline 
+31 & Sim & Não & 37,17281331 & 0,00003463 & 37,17277868\\ \hline 
+32 & Sim & Não & 42,53774093 & 0,00003393 & 42,53770700\\ \hline  
+ \end{longtable}
+ 
+ 
+ 	
+\begin{longtable}{|c|p{1cm}|p{1cm}|p{2cm}|p{2cm}|p{2cm}|}
+ \caption{Tabela dos resultados e tempos dos algoritmos com 2000 rodadas. (MR = Miller-Rabin, SS = Solovay–Strassen, ET = Elapsed Time) }\label{tab:comparacao}\\
+ \hline
+ Índice & MR & SS & ET MR & ET SS & Diferença \\ \hline
+ 
+1 & Sim & Não & ,07188966 & ,00358343 & ,06830623\\ \hline 
+2 & Sim & Não & ,01092295 & ,00004786 & ,01087509\\ \hline 
+3 & Sim & Não & ,00827426 & ,00001637 & ,00825789\\ \hline 
+4 & Sim & Não & ,01022792 & ,00001961 & ,01020831\\ \hline 
+5 & Sim & Não & ,01549784 & ,00015534 & ,01534250\\ \hline 
+6 & Sim & Não & ,01036804 & ,00002936 & ,01033868\\ \hline 
+7 & Sim & Não & ,00992531 & ,00002481 & ,00990050\\ \hline 
+8 & Sim & Não & ,00995677 & ,00003534 & ,00992143\\ \hline 
+9 & Sim & Não & ,02164093 & ,00001231 & ,02162862\\ \hline 
+10 & Sim & Não & ,01794020 & ,00002112 & ,01791908\\ \hline 
+11 & Sim & Não & ,01740474 & ,00001803 & ,01738670\\ \hline 
+12 & Sim & Não & ,01651986 & ,00001889 & ,01650097\\ \hline 
+13 & Sim & Não & ,05196184 & ,00001506 & ,05194679\\ \hline 
+14 & Sim & Não & ,05953822 & ,00002791 & ,05951031\\ \hline 
+15 & Sim & Não & ,04452142 & ,00001748 & ,04450393\\ \hline 
+16 & Sim & Não & ,05643745 & ,00001414 & ,05642330\\ \hline 
+17 & Sim & Não & ,19155928 & ,00001875 & ,19154053\\ \hline 
+18 & Sim & Não & ,17732421 & ,00001681 & ,17730740\\ \hline 
+19 & Sim & Não & ,17727300 & ,00002178 & ,17725122\\ \hline 
+20 & Sim & Não & ,18070891 & ,00002645 & ,18068246\\ \hline 
+21 & Sim & Não & 2,18059601 & ,00001692 & 2,18057909\\ \hline 
+22 & Sim & Não & 1,84947173 & ,00003092 & 1,84944081\\ \hline 
+23 & Sim & Não & 1,11954804 & ,00002089 & 1,11952716\\ \hline 
+24 & Sim & Não & 1,52860683 & ,00001426 & 1,52859256\\ \hline 
+25 & Sim & Não & 11,01797639 & ,00004364 & 11,01793276\\ \hline 
+26 & Sim & Não & 11,19984695 & ,00004088 & 11,19980607\\ \hline 
+27 & Sim & Não & 10,98346072 & ,00002964 & 10,98343108\\ \hline 
+28 & Sim & Não & 12,17771666 & ,00003624 & 12,17768042\\ \hline 
+29 & Sim & Não & 87,54197128 & ,00003224 & 87,54193904\\ \hline 
+30 & Sim & Não & 89,05598291 & ,00005919 & 89,05592372\\ \hline 
+31 & Sim & Não & 82,28403497 & ,00002042 & 82,28401455\\ \hline 
+32 & Sim & Não & 82,27667705 & ,00007727 & 82,27659978\\ \hline 
+ 
+ \end{longtable}
+	
+	
+ 
+ 	
+\begin{longtable}{|c|p{1cm}|p{1cm}|p{2cm}|p{2cm}|p{2cm}|}
+ \caption{Tabela dos resultados e tempos dos algoritmos com 20000 rodadas. (MR = Miller-Rabin, SS = Solovay–Strassen, ET = Elapsed Time) }\label{tab:comparacao}\\
+ \hline
+ Índice & MR & SS & ET MR & ET SS & Diferença \\ \hline
+ 
+1 & Sim & Não & 0,11171003 & 0,00072251 & 0,11098752\\ \hline 
+2 & Sim & Não & 0,07335955 & 0,00011614 & 0,07324341\\ \hline 
+3 & Sim & Não & 0,08186430 & 0,00001901 & 0,08184529\\ \hline 
+4 & Sim & Não & 0,05165693 & 0,00001826 & 0,05163867\\ \hline 
+5 & Sim & Não & 0,13971304 & 0,00012893 & 0,13958411\\ \hline 
+6 & Sim & Não & 0,13462999 & 0,00003382 & 0,13459617\\ \hline 
+7 & Sim & Não & 0,11232166 & 0,00002404 & 0,11229762\\ \hline 
+8 & Sim & Não & 0,11554731 & 0,00002949 & 0,11551782\\ \hline 
+9 & Sim & Não & 0,24554998 & 0,00003056 & 0,24551941\\ \hline 
+10 & Sim & Não & 0,22760821 & 0,00004261 & 0,22756561\\ \hline 
+11 & Sim & Não & 0,19712433 & 0,00003155 & 0,19709278\\ \hline 
+12 & Sim & Não & 0,20150501 & 0,00003131 & 0,20147369\\ \hline 
+13 & Sim & Não & 0,72246317 & 0,00003407 & 0,72242911\\ \hline 
+14 & Sim & Não & 0,73429265 & 0,00003507 & 0,73425758\\ \hline 
+15 & Sim & Não & 0,71114959 & 0,00003585 & 0,71111373\\ \hline 
+16 & Sim & Não & 0,43449985 & 0,00004040 & 0,43445945\\ \hline 
+17 & Sim & Não & 2,46091771 & 0,00002405 & 2,46089366\\ \hline 
+18 & Sim & Não & 2,56907771 & 0,00004308 & 2,56903463\\ \hline 
+19 & Sim & Não & 1,63278166 & 0,00002478 & 1,63275688\\ \hline 
+20 & Sim & Não & 3,39448872 & 0,00007026 & 3,39441846\\ \hline 
+21 & Sim & Não & 14,56426880 & 0,00003966 & 14,56422914\\ \hline 
+22 & Sim & Não & 14,36132480 & 0,00007242 & 14,36125237\\ \hline 
+23 & Sim & Não & 15,49475016 & 0,00004771 & 15,49470245\\ \hline 
+24 & Sim & Não & 16,97889106 & 0,00001516 & 16,97887590\\ \hline 
+25 & Sim & Não & 112,70947719 & 0,00002850 & 112,70944869\\ \hline 
+26 & Sim & Não & 119,64860039 & 0,00001713 & 119,64858326\\ \hline 
+27 & Sim & Não & 117,71940390 & 0,00002893 & 117,71937497\\ \hline 
+28 & Sim & Não & 116,97791633 & 0,00002738 & 116,97788895\\ \hline 
+29 & Sim & Não & 903,69619122 & 0,00002027 & 903,69617095\\ \hline 
+30 & Sim & Não & 849,73224558 & 0,00007467 & 849,73217091\\ \hline 
+31 & Sim & Não & 803,39407188 & 0,00002740 & 803,39404448\\ \hline 
+32 & Sim & Não & 858,20336123 & 0,00001957 & 858,20334166\\ \hline 
+
+ \end{longtable}
+	
+	
+	Nas tabelas acima temos dois comportamentos inesperados. O primeiro é que enquanto o Solovay-Strassen tem sua duração muito baixa, o Miller-Rabin tem seu tempo de execução mais que dobrando quando alteramos a quantidade de bits para o dobro. Motivos para isso podem ser vários, mas o mais óbvio é a escolha da linguagem. Sabemos que Java não é a linguagem mais robusta, muito menos seu ambiente de execução. Outro possível problema é a dependência que a implementação tem da classe BigInteger para lidar com números exageradamente grandes. O Outro comportamento é que com 1000, 2000 e 20000 rodadas, o Miller-Rabin não foi capaz de identificar que os números não eram primos. Enquanto o Solovay-Strassen identificou muito fácil. Obviamente isso acontece pois o número de rodadas é muito diferente entre as duas implementações. Porém, isto é uma barreira de hardware/software disponíveis e escolhidos para o desenvolvimento deste trabalho. Portanto, de acordo com todos os códigos apresentados e dados listados, podemos concluir que neste caso específico a implementação do Solovay-Strassen apresentou melhores resultados.
+	
+	
+	 
+\begin{longtable}{|c|p{9cm}|}
+ \caption{Tabela de números aleatórios primos.}\label{tab:comparacao}\\
+  \hline
+   	Índice & Número \\ \hline
+   	1 & 2029663043\\ \hline 
+2 & 1818701935\\ \hline 
+3 & 1269497125\\ \hline 
+4 & 2066721673\\ \hline 
+5 & 7630766861971458425\\ \hline 
+6 & 8305496549126277389\\ \hline 
+7 & 7622826425035437111\\ \hline 
+8 & 7040092047322450767\\ \hline 
+9 & 120298170997570680356444293518225934565\\ \hline 
+10 & 133804528563206615538729272032743639375\\ \hline 
+11 & 162811172248064604546734121441704956247\\ \hline 
+12 & 125680834290773339795990496296686958291\\ \hline 
+13 & 53215508396768921864158266896585268430336999318
+646838633790285185186997324917\\ \hline 
+14 & 40533387024726302616725978853770682440451470247
+015357489371785044403544074253\\ \hline 
+15 & 50502215623936459773444886938277764357408507917
+167559671340915625223036862831\\ \hline 
+16 & 37734798666453584805041211019807942609813608663
+655818417264849597749727573747\\ \hline 
+17 & 
+36784024343224613212559066245057212238014342749
+80623156784568725896021848104778576704045031428
+32774527703592792175178308492505461418621570750
+3034566100539\\ \hline 
+18 & 
+56825781112553700490447430168742749383412535001
+26556254774860280317538523703915964539415705371
+70443377480260544128892227592764591285388238177
+9991232856009\\ \hline 
+19 & 
+37528720125794310288937004851364243958326795809
+40651767609704806360556501049520147660521852605
+87827457428974335715570652403320475451066954544
+3375434319783\\ \hline 
+20 & 
+56971371811348059825093807875808982782138683074
+87270084484693844529759960002955606047402213272
+03950408186257729813384481076318081250684317120
+7462213122379\\ \hline 
+21 & 
+67070175241581097513176190774351287166953940781
+62212134354146409421311659777730953400907447351
+72687809209125622836612169773670937086932924925
+32445454197623366508556427506681133327621266758
+04618810400825102026210689501802632981977324424
+97233857375390305733502475950890675886079368610
+34388423329835128233056113\\ \hline 
+22 & 
+76029136412596490979197160539457113279797433033
+42666950244411032008654439987380268689081295278
+23832447840127253328190292216663380345595100757
+25264237787170471930437119969684211278159790513
+71008395727018531608545070911117162639728027573
+45608221251697917759445569694683965497018484031
+17689231729587590958853333\\ \hline 
+23 & 
+66134819633397037237609151550203988817500456486
+95720427323914180668691926641401420467448165505
+02314580421162016163678279885948160004851867176
+37437196612925867473633333070627040038856390783
+41979985023912914826977462340578280347766366312
+31365877675311809321485256691730643635961661416
+91428707948138486244956699\\ \hline 
+24 & 
+79262019616818438601650147906191545917783951859
+01264539785282623296805597102398658551251672065
+29253122979458871585714980826441528674239985510
+50429360726310272275013427247238161272861282596
+76277035930433739590111243976706641806609979008
+50936208871648970265765134270907407636709269867
+82562324682727591311010025\\ \hline 
+25 & 
+13371479341546463597378969830319908828669466900
+14354342028546467597392946333122207573261650192
+20550976142683097445604595702857143515171188507
+15211053313804215641516978017903523115552105333
+88963575524376554025706606694415355921163149496
+16090859174303030099023036635748092221071968790
+95402376421822352087438902430199549737553256781
+40795243898693035036247612424071444841676805585
+65484243691046207604500881039257841371097774381
+49903077389774552300245146925826218561023299575
+03918368107401497250173705179112147242625582195
+03542441202221931275745578344373455959833468168
+69761507258627677187584157599924613509165153870
+617873\\ \hline 
+26 & 
+12503047789900648976806157045988977119866494414
+97103401985979203794386771803486562987187870806
+56030736192291694797884430332448907700525510617
+61330210163788706585160635955865834843406487159
+44607702173153902528758973128937280487879490941
+47680811802458571320235377238196229132587140859
+25297897865652854364716243728609923219886470797
+50372095051177334033412668309783646378377538417
+19956383174070697347356315584807485043992021947
+60283236778490305559338123809012886350318839484
+44396462536338948016777188831640886768112528915
+59040633659750487450378578483245203406039145458
+29704876891793398983769257344275483559267937343
+255453\\ \hline 
+27 & 
+13357722463604316822300176461233422623216434475
+24276050119455105317682471052144634745693890799
+65551830170706843277456313365786453354117205258
+45495347803789805275338192012683280133479505670
+46258703053816798492254447955332653685861302317
+01397916210271422236765210362212000987656081473
+54681152931061765204327103009148722745343698410
+28939542228123953037814048611433180759916933746
+56774632736212339796286553093727160184402404635
+85154973556121986150979524223731276225404497982
+79775777808684584392135886595602752968984639513
+30939244576098594053461710263510887166990341174
+92472263689698192672115748683130797488012972909
+271545\\ \hline 
+28 & 
+12526360337564578028267997795111411862108433975
+96252436664657196591100320680444037794098412806
+12417997059565106342490708151211091425432792214
+94773804674921341435990555691878644569268571938
+77536598894215747143678045278285507353191672941
+40541298146286208242970111851116051679628003840
+52849924244203531702254263344105092249867100333
+29148505939765060670684674554929621550045522408
+87576545284997654403377905307500372363602151338
+93109297709105709696754988562196477396309180155
+03224808666724756673014078288734522426603546033
+13264096361823071130104961098380564536389640702
+29057552750559893020145294078174152913439078051
+578095\\ \hline 
+29 & 
+4997467479754343465478030653202740512179905548
+4073138168826389669280266085411190241190240306
+1984709585390010574444897735366506055508830298
+1335651857083921318642673073029198730819262308
+7998675335723995557319690514203748490419988701
+6796361958633456676891796594803861894652314867
+8849842857603014373134525299794078691886854810
+5603908015423664977543898648278786567743226997
+5416664369348082878785110325403656214628123657
+8343981594714934255035240916121247318527972388
+2201234636702482703811610985198797601698765040
+3508460895380636459400158418849121590902661338
+5748853315369723214248872461902419416573439542
+2200897639482130324346092642743868957401067686
+7013116433046606838088959209120832514493173015
+7312369868544224841184492941539656908033003270
+69043964253760984321027021178046511033251334870
+24320963295387572001417776428516000839066484952
+82348977075058852574848543950838806946030762212
+26853022104484680321940822704091035051122519715
+12738481129282130490855126442787777504646995883
+11153186979704230151680779643240124809252419805
+82120370426231115163816530205520468835479316234
+70338418403100633871651476961221162337212504760
+48642807459290789926155699342524429094135948217
+73496553678500305809311377744455041539012410776
+120868859699255688045166647\\ \hline 
+30 & 
+43211492634276783754495948928515095427988834473
+23042067703695440993936885154733278587253309719
+62099240899366022233574589952236588965669362843
+26715113226229563506000928322912682994666465121
+87696383129164659704880708247464555612715431404
+15630215043676943245598118762907208336879339052
+21009592766753348890688385332666351027637550429
+68030860348288306315095594109582777823601830290
+62792845278293529267816585437310868449287878891
+19321321396151597693485380238906786332559337153
+42308799049100640333934318281421731353558538919
+14438227759932085414301988924045664298678306156
+61209525924618410551012613446247349871361880743
+36616811460565014236632093444146624921164025283
+48449131687869447004895777579260792741131733963
+48886339177056078982926392440587830093869435641
+13046907740390146107083855093754734846339634217
+93704283539257238171026902372961631009108740918
+54506485187141058361924917862312981308758819806
+31429976313247611839815191043311597612728252946
+66519454203222490986401509182133072708018099358
+80411112875712611979989180994550562466865024239
+39037132930393987657484948152291278353415278706
+82368690712262905241408522816946170377352071022
+43147211794005736693342189222886804912980036687
+31953833497307941370522364693099839753174419531
+63701294607\\ \hline 
+31 & 
+49984710841722523575153694013222036663872958578
+83741250679222263998479122216653674064413863160
+19919749008786504188137495104771704570044258171
+78190633494240559189500320955071222981995834863
+89936395549870324994517461824314307479236067878
+27943682450646195931806709793459545427861446166
+67358148620434375319200142754813103960214923103
+41481619573994720321446671673394824840510083494
+18379225637301211540009993348048857914918463104
+41301160845346100702375044527571124420318647741
+71669844097433466208150225806390676659280704168
+31401334320102962864103802615150600780595750928
+42077053834984148832663978320889032203952297564
+06897743074208271580428497443631162956224951585
+93440420082842912954754329639410292075422563742
+79713428872424850335548012251172695444255450181
+34588221080130925821396063965977044112770917733
+37878554082698932329124609978637258410253828247
+89184058687857243884604552679218651933487269182
+81302020843029865690978802141373182139512877601
+05260566305668886701751572123123030744229596311
+08592864939704918866062164981920934133596447152
+72841383904137959606350882245353231823102249292
+15435158068506580679094760737149237515791675172
+99582012312261294644176802504600473092985255024
+08793555301976007738999775092702235499789892748
+20978348327\\ \hline 
+32 & 
+37274233314568899632336507339050019789629231496
+06062029686083159997299830441140288599528403812
+22398523702755637336721939650587594947948846083
+89545255103822833685482527687289578622423435612
+86416635699223738998005754188389053446753360218
+31464642319789751403194208976586070433110370385
+05592618568036443061992519519719009338344589830
+44488437234284711651809097435974075241967365634
+72146132762651519392059492481647581696620455398
+03875420544179045671080895733802929115871249179
+62133770885709183660229915987453981495137220495
+88646682012126984835436923154339859963060749253
+01594390839263701448765233736864102207106814661
+04350615707034766992674453524390710870819951506
+01852181089675322885031475237424423825157621493
+36965736887149132379504908301827132018087144070
+32062145629308174225545179785250428483096090946
+34861385077783117198030672816309307049699133097
+82952695273067585613131052909138679031105577400
+37840163001329011139289305521862477012725358782
+29195775060579354446808334159421474542048448365
+85752376432650430314321084391645478441757689635
+95714855588446207564456047049009326015530030953
+61868904046835396305151371360444659458136647671
+90528787131934564299965488828855213611220870752
+87432303843976070544079032825364542972488144223
+35496429885\\ \hline 
+
+\end{longtable}
+
 \end{document}
